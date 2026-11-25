@@ -186,14 +186,25 @@ border:1.5px solid #e3d2bd;border-radius:12px;box-shadow:0 1px 2px rgba(74,44,20
 html{scroll-behavior:smooth}
 
 table th.srt{cursor:pointer;user-select:none}table th.srt::after{content:" ↕";opacity:.35;font-size:10px}table th.asc::after{content:" ▲";opacity:1;color:var(--ac)}table th.desc::after{content:" ▼";opacity:1;color:var(--ac)}
+
+.bar .fl{display:flex;flex-direction:column;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#7a5a3a;gap:5px;position:relative}
+.fl>button{appearance:none;min-width:170px;max-width:260px;height:44px;padding:0 40px 0 14px;font:500 14px/1 inherit;font-family:inherit;color:#3b2a1b;text-transform:none;letter-spacing:0;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b5a2b' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center;border:1.5px solid #e3d2bd;border-radius:12px;box-shadow:0 1px 2px rgba(74,44,20,.08);transition:border-color .2s,box-shadow .2s}
+.fl>button:hover,.fl>button[aria-expanded=true]{border-color:#b5651d;background-color:#fffaf4;box-shadow:0 3px 10px -3px rgba(139,90,43,.3)}
+.mp{position:absolute;top:100%;left:0;margin-top:6px;min-width:100%;max-height:300px;overflow:auto;background:#fff;border:1.5px solid #e3d2bd;border-radius:12px;box-shadow:0 12px 28px -8px rgba(74,44,20,.35);padding:6px;z-index:200;text-transform:none;letter-spacing:0}
+.mp[hidden]{display:none}
+.mp label{display:flex!important;flex-direction:row!important;align-items:center;gap:10px!important;padding:8px 10px;border-radius:8px;font-size:14px!important;font-weight:500!important;color:#3b2a1b!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer;white-space:nowrap}
+.mp label:hover{background:#f7ecdd}.mp label.on{background:#f3e2cd}
+.mp input{width:16px;height:16px;padding:0;margin:0;accent-color:#8b5a2b;cursor:pointer}
+.mp .sep{height:1px;background:#e3d2bd;margin:4px 2px}
 </style><link rel="preconnect" href="https://docs.google.com" crossorigin><link rel="dns-prefetch" href="https://docs.google.com"></head><body><div id="ld" role="status" aria-live="polite"><div class="spin"></div><div class="lt">Loading data from Google Sheet<i>.</i><i>.</i><i>.</i></div><div class="lb"></div></div><div id="sp"></div><button id="fab" aria-label="Back to top">↑</button><div class="w">
 <div class="hd"><div><h1>G-Line Daily Sales Dashboard</h1><div class="hs"><span id="hmon">–</span> · Target vs Primary vs Delivery vs Secondary · Sec % = Secondary ÷ Target</div></div>
 <div class="hc"><div class="gl"><div class="gk">Latest Date</div><div class="gv" id="hdate">–</div></div><div class="gl"><div class="gk">Day Off</div><div class="gv" id="hoff">5</div></div><div class="gl"><div class="gk">Working Day</div><div class="gv" id="hwd" style="color:#ffd9a0">26 days</div></div><button class="rb" id="rf" type="button">↻ Refresh</button></div></div>
 <div class="st" id="st" style="display:none"><span id="stt">Loading data from Google Sheet…</span></div>
 <div class="bar">
-<label>Wing<select id="fw"></select></label>
-<label>Region<select id="fr"></select></label>
-<label>Territory<select id="ft"></select></label>
+<div class="fl" id="fwm">Wing<button type="button" id="fwb" aria-haspopup="true" aria-expanded="false"></button><div class="mp" id="fwp" hidden></div></div>
+<div class="fl" id="frm">Region<button type="button" id="frb" aria-haspopup="true" aria-expanded="false"></button><div class="mp" id="frp" hidden></div></div>
+<div class="fl" id="ftm">Territory<button type="button" id="ftb" aria-haspopup="true" aria-expanded="false"></button><div class="mp" id="ftp" hidden></div></div>
 <label>Category<select id="fc"></select></label>
 <label style="display:none">Unit<div class="seg" id="ou" style="margin:0"></div></label>
 </div>
@@ -234,21 +245,37 @@ const col=p=>p>=.8?"var(--g)":p>=.5?"var(--a)":"var(--r)";
 const bg=p=>p>=.8?"rgba(22,163,74,.22)":p>=.5?"rgba(217,119,6,.22)":"rgba(220,38,38,.22)";
 const uniq=a=>[...new Set(a)].sort();
 function fill(s,a,all){s.innerHTML=[all,...a].map(x=>`<option>${x}</option>`).join("")}
-fill($("fw"),uniq(D.map(r=>r[0])),"All wings");
-function regs(){const w=$("fw").value;fill($("fr"),uniq(D.filter(r=>w=="All wings"||r[0]==w).map(r=>r[1])),"All regions");terrs()}
-function terrs(){const w=$("fw").value,g=$("fr").value;$("ft").innerHTML=["<option value='All territories'>All territories</option>",...uniq(D.filter(r=>(w=="All wings"||r[0]==w)&&(g=="All regions"||r[1]==g)).map(r=>r[2])).map(t=>`<option value="${t}">${t.replace(/_T$/,"")}</option>`)].join("")}
+const MSS=[];
+function mkMS(id,all,noun,list,fmt){const S=new Set(),B=$(id+"b"),P=$(id+"p");
+const close=()=>{P.hidden=true;B.setAttribute("aria-expanded","false")};
+const m={S,ok:v=>!S.size||S.has(v),close,onchange:null,
+build(){const L=list();[...S].forEach(v=>{if(!L.includes(v))S.delete(v)});
+P.innerHTML=`<label class="${S.size?"":"on"}"><input type="checkbox" data-a="1" ${S.size?"":"checked"}>${all}</label><div class="sep"></div>`+L.map(v=>`<label class="${S.has(v)?"on":""}"><input type="checkbox" data-v="${v}" ${S.has(v)?"checked":""}>${fmt(v)}</label>`).join("");
+B.textContent=S.size?S.size==1?fmt([...S][0]):S.size+" "+noun+" selected":all;B.title=S.size?[...S].map(fmt).join(", "):""}};
+B.onclick=e=>{e.stopPropagation();const o=P.hidden;MSS.forEach(x=>x.close());P.hidden=!o;B.setAttribute("aria-expanded",o)};
+P.onclick=e=>e.stopPropagation();
+P.onchange=e=>{const t=e.target;if(t.dataset.a)S.clear();else if(t.dataset.v!=null){t.checked?S.add(t.dataset.v):S.delete(t.dataset.v)}m.build();if(m.onchange)m.onchange()};
+MSS.push(m);return m}
+document.addEventListener("click",()=>MSS.forEach(x=>x.close()));
+document.addEventListener("keydown",e=>{if(e.key=="Escape")MSS.forEach(x=>x.close())});
+const WM=mkMS("fw","All wings","wings",()=>uniq(D.map(r=>r[0])),x=>x),WS=WM.S,wOK=WM.ok,
+RM=mkMS("fr","All regions","regions",()=>uniq(D.filter(r=>wOK(r[0])).map(r=>r[1])),x=>x),RS=RM.S,rOK=RM.ok,
+TM=mkMS("ft","All territories","territories",()=>uniq(D.filter(r=>wOK(r[0])&&rOK(r[1])).map(r=>r[2])),x=>x.replace(/_T$/,"")),TS=TM.S,tOK=TM.ok;
+function regs(){RM.build();terrs()}
+function terrs(){TM.build()}
+WM.onchange=()=>{regs();go()};RM.onchange=()=>{terrs();go()};TM.onchange=go;
 regs();
 fill($("fc"),CATS,"All categories");
 
 $("tabs").onclick=e=>{const b=e.target.closest("[data-i]");if(!b)return;const i=+b.dataset.i;sel=sel.has(i)?new Set():new Set([i]);go()};
-$("fw").onchange=()=>{regs();go()};$("fr").onchange=()=>{terrs();go()};$("ft").onchange=go;$("fc").onchange=()=>{const i=CATS.indexOf($("fc").value);sel=i<0?new Set():new Set([i]);go()};$("dp").oninput=go;$("dm").oninput=go;$("dp").onchange=$("dm").onchange=()=>{let m=Math.max(1,Math.min(+$("dm").value||31,31));$("dm").value=m;$("dp").value=Math.max(1,Math.min(+$("dp").value||1,m));go()};
-document.addEventListener("click",e=>{const b=e.target.closest("[data-wing]");if(!b)return;const w=b.dataset.wing;$("fw").value=$("fw").value==w?"All wings":w;regs();go()});
-document.addEventListener("click",e=>{const t=e.target.closest("[data-reg]");if(!t)return;const g=t.dataset.reg;$("fr").value=$("fr").value==g?"All regions":g;terrs();go()});
+$("fc").onchange=()=>{const i=CATS.indexOf($("fc").value);sel=i<0?new Set():new Set([i]);go()};$("dp").oninput=go;$("dm").oninput=go;$("dp").onchange=$("dm").onchange=()=>{let m=Math.max(1,Math.min(+$("dm").value||31,31));$("dm").value=m;$("dp").value=Math.max(1,Math.min(+$("dp").value||1,m));go()};
+document.addEventListener("click",e=>{const b=e.target.closest("[data-wing]");if(!b)return;const w=b.dataset.wing;if(WS.size==1&&WS.has(w))WS.clear();else{WS.clear();WS.add(w)}WM.build();regs();go()});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-reg]");if(!t)return;const g=t.dataset.reg;if(RS.size==1&&RS.has(g))RS.clear();else{RS.clear();RS.add(g)}RM.build();terrs();go()});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-u]");if(b){ou=b.dataset.u;sel=new Set();go()}});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-m]");if(b){met=b.dataset.m;go()}});
 const sum=(rows,c)=>{const o={t:0,p:0,d:0,s:0,k:0,tt:0};rows.forEach(r=>{const v=r[3+c];o.t+=v[0];o.p+=v[1];o.d+=v[2];o.s+=v[3];o.k+=v[4];o.tt+=v[5]||0});o.pp=o.p/o.t;o.sp=o.s/o.t;return o};
-function rows(){const w=$("fw").value,g=$("fr").value,q=$("ft").value;
-return D.filter(r=>(w=="All wings"||r[0]==w)&&(g=="All regions"||r[1]==g)&&(q=="All territories"||r[2]==q))}
+function rows(){
+return D.filter(r=>wOK(r[0])&&rOK(r[1])&&tOK(r[2]))}
 const grp=(rs,i)=>uniq(rs.map(r=>r[i])).map(k=>({k,rs:rs.filter(r=>r[i]==k)}));
 function chart(id,cfg){const cv=$(id);
 for(const o of [charts[id],Chart.getChart(cv)])try{if(o)o.destroy()}catch(e){}
@@ -316,7 +343,7 @@ $("t11").textContent="Run rate & forecast";
 $("hoff").textContent=window.OFF!=null?window.OFF:dm-dp;$("hwd").textContent=dp+" / "+dm+" days";
 const FK=[["Till-date "+ML,n(M),pc(M/T)+" of target"],["Daily run rate",n(rr,1),"per day · day "+cd+" of "+cm],["Required per day",cm>cd?n(rq,1):"–",(cm-cd)+" days left to reach target"],["Projected month-end",n(pj),pc(pj/T)+" of target"],[pj>=T?"Surplus vs target":"Gap vs target",n(Math.abs(pj-T)),"target "+n(T)],["Pace vs target",pc(M/(T*cd/cm)),"actual ÷ expected till today"]];
 $("fk").innerHTML=FK.map(x=>`<div class="card"><div class="kl">${x[0]}</div><div class="kv">${x[1]}</div><div class="sub">${x[2]}</div></div>`).join("");
-const lvl=$("ft").value!="All territories"?2:$("fr").value!="All regions"?2:$("fw").value!="All wings"?1:0,LN=["Wing","Region","Territory"][lvl];
+const lvl=TS.size?2:RS.size?2:WS.size?1:0,LN=["Wing","Region","Territory"][lvl];
 const fr2=grp(rs,lvl).map(g=>{const s=sumS(g.rs),m=s[met],r=m/cd;return{k:g.k.replace(/_[WRT]$/,"").replace(/_/g," "),t:s.t,m,r,pj:r*cm,pp:r*cm/s.t,rq:cm>cd?Math.max((s.t-m)/(cm-cd),0):0}}).filter(x=>x.t>0).sort((x,y)=>y.pp-x.pp);
 $("fwt").innerHTML="<table><tr><th>"+LN+"</th><th>Target</th><th>Till-date</th><th>Run rate / day</th><th>Required / day</th><th>Projected</th><th>Proj %</th><th>Status</th></tr>"+fr2.map(x=>`<tr><td>${x.k}</td><td>${n(x.t)}</td><td>${n(x.m)}</td><td>${n(x.r,1)}</td><td>${n(x.rq,1)}</td><td>${n(x.pj)}</td><td>${pl(x.pp)}</td><td style="color:${col(x.pp)}">${x.pp>=1?"On track":x.pp>=.8?"Watch":"At risk"}</td></tr>`).join("")+"</table>";
 
@@ -329,7 +356,7 @@ const lo=act2.filter(x=>x.t>0&&x.k2>0&&x.c<LOW).length,hi=act2.filter(x=>x.k2>0&
 const skK=[["Total stock",n(a.k),SKU],["Stock cover",isFinite(cov(a.k,a.s))?n(cov(a.k,a.s),1)+" days":"–","at current secondary run rate"],["Stock vs target",a.t>0?pc(a.k/a.t):"–","stock ÷ month target"],["Low stock",n(lo),"territories under "+LOW+" days"],["Overstock",n(hi),"territories over "+HIGH+" days"],["Out of stock",n(oo),"target set but zero stock"],["Stock, no sales",n(ns),"stock but zero secondary"]];
 $("sk").innerHTML=skK.map(x=>`<div class="card"><div class="kl">${x[0]}</div><div class="kv">${x[1]}</div><div class="sub">${x[2]}</div></div>`).join("");
 const stT=(items,lab)=>"<table><tr><th class='l'>"+lab+"</th><th>Target</th><th>Secondary</th><th>Stock</th><th>Stock % tgt</th><th>Cover (days)</th><th>Status</th></tr>"+items.map(x=>`<tr><td class="l">${x.k}</td><td>${n(x.t)}</td><td>${n(x.s)}</td><td>${n(x.k2)}</td><td>${x.t>0?pc(x.k2/x.t):"–"}</td><td>${cvN(x.k2,x.s)}</td><td>${cvP(x.k2,x.s,x.t)}</td></tr>`).join("")+"</table>";
-const sl=$("ft").value!="All territories"?2:$("fr").value!="All regions"?2:$("fw").value!="All wings"?1:0;
+const sl=TS.size?2:RS.size?2:WS.size?1:0;
 const wi=grp(rs,sl).map(g=>{const q=sumS(g.rs);return{k:g.k.replace(/_[WRT]$/,"").replace(/_/g," "),t:q.t,s:q.s,k2:q.k,c:cov(q.k,q.s)}}).filter(x=>x.t>0||x.k2>0).sort((x,y)=>(isFinite(x.c)?x.c:1e9)-(isFinite(y.c)?y.c:1e9));
 $("skw").innerHTML=stT(wi,["Wing","Region","Territory"][sl]+" (lowest cover first)");
 const lowL=act2.filter(x=>x.t>0&&(x.k2<=0||(isFinite(x.c)&&x.c<LOW))).sort((x,y)=>(x.k2<=0?-1:x.c)-(y.k2<=0?-1:y.c)).slice(0,10);
@@ -359,10 +386,7 @@ const rows=R.filter((r,ri)=>ri>0&&r[0]&&r[1]&&r[2]&&r[0].trim().toLowerCase()!="
 if(!rows.length)throw new Error("no data rows found");return{rows,off,wd,ed}}
 async function fetchSheet(){let err;for(const u of SRC){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),20000);try{const r=await fetch(u+"&_="+Date.now(),{cache:"no-store",signal:ac.signal});if(!r.ok)throw new Error("HTTP "+r.status);const t=await r.text();if(/^\s*</.test(t))throw new Error("sheet is not public");return parse(t)}catch(e){err=e}finally{clearTimeout(tm)}}throw err}
 let LASTSIG="";
-function apply(p){const sig=JSON.stringify(p);if(sig===LASTSIG)return false;LASTSIG=sig;D=p.rows;window.OFF=p.off;const k={w:$("fw").value,g:$("fr").value,t:$("ft").value},has=(s,v)=>[...s.options].some(o=>o.value==v);
-fill($("fw"),uniq(D.map(r=>r[0])),"All wings");if(has($("fw"),k.w))$("fw").value=k.w;
-regs();if(has($("fr"),k.g))$("fr").value=k.g;
-terrs();if(has($("ft"),k.t))$("ft").value=k.t;
+function apply(p){const sig=JSON.stringify(p);if(sig===LASTSIG)return false;LASTSIG=sig;D=p.rows;window.OFF=p.off;WM.build();regs();
 const now=new Date(),ed=p.ed||{},yy=ed.y!=null?ed.y:now.getFullYear(),mm=ed.m!=null?ed.m:now.getMonth(),dim=new Date(yy,mm+1,0).getDate(),day=Math.min(ed.d||now.getDate(),dim),d=new Date(yy,mm,day),
 dm=p.wd>0?Math.min(p.wd,31):Math.max(1,dim-p.off),dp=Math.max(1,Math.min(day-p.off,dm));
 window.CUR=day;window.DIM=dim;$("dm").value=dm;$("dp").value=dp;
